@@ -49,8 +49,6 @@ class EventHandler:
     
     def left_mouse_button_down(self):
         self.board_gui.dragging_piece_square = self.board_gui.get_square_from_mouse_pos()
-        self.board_gui.arrows.clear()
-        self.board_gui.highlight_squares_dict.clear()
         self.board_gui.update_empty_board()
 
     def left_mouse_button_up(self):
@@ -68,9 +66,6 @@ class EventHandler:
                 self.board_gui.push(move)
                 self.board_gui.popped_moves.clear()
             self.board_gui.dragging_piece_square = None
-        self.board_gui.arrows.clear()
-        self.board_gui.highlight_squares_dict.clear()
-        self.board_gui.update_empty_board()
 
     def right_mouse_button_down(self):
         self.right_click_pressed_square = self.board_gui.get_square_from_mouse_pos()
@@ -171,6 +166,9 @@ class BoardGUI:
         check = None
         if self.board.is_check():
             check = self.board.king(self.board.turn)
+        if self.dragging_piece_square is not None:
+            self.arrows.clear()
+            self.highlight_squares_dict.clear()
         self.empty_board_blit = self.render_object(
             chess.Board("8/8/8/8/8/8/8/8 w - - 0 1"),
             self.RESOLUTION,
