@@ -1,1 +1,1 @@
-# chess-gui
+# Chess GUI
