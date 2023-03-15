@@ -45,9 +45,13 @@ class EventHandler:
 
     def __init__(self, board_gui):
         self.board_gui = board_gui
+        self.right_click_pressed_square = None
     
     def left_mouse_button_down(self):
         self.board_gui.dragging_piece_square = self.board_gui.get_square_from_mouse_pos()
+        self.board_gui.arrows.clear()
+        self.board_gui.highlight_squares_dict.clear()
+        self.board_gui.update_empty_board()
 
     def left_mouse_button_up(self):
         dragging_piece = None if self.board_gui.dragging_piece_square is None else self.board_gui.board.piece_at(self.board_gui.dragging_piece_square)
@@ -64,6 +68,25 @@ class EventHandler:
                 self.board_gui.push(move)
                 self.board_gui.popped_moves.clear()
             self.board_gui.dragging_piece_square = None
+        self.board_gui.arrows.clear()
+        self.board_gui.highlight_squares_dict.clear()
+        self.board_gui.update_empty_board()
+
+    def right_mouse_button_down(self):
+        self.right_click_pressed_square = self.board_gui.get_square_from_mouse_pos()
+
+    def right_mouse_button_up(self):
+        right_click_released_square = self.board_gui.get_square_from_mouse_pos()
+        if self.right_click_pressed_square == right_click_released_square:
+            if self.right_click_pressed_square in self.board_gui.highlight_squares_dict.keys():
+                self.board_gui.highlight_squares_dict.pop(self.right_click_pressed_square)
+            else:
+                square = self.right_click_pressed_square
+                self.board_gui.highlight_squares_dict[square] = self.board_gui.HIGHLIGHT_SQUARES_COLOR_DARK if (chess.square_rank(square) + chess.square_file(square)) % 2 else self.board_gui.HIGHLIGHT_SQUARES_COLOR_LIGHT
+        else:
+            print("Drawing arrows implemented yet :(")
+        self.right_click_pressed_square = None
+        self.board_gui.update_empty_board()
     
     def left_arrow_key_down(self):
         if self.board_gui.board.move_stack:
@@ -93,25 +116,31 @@ class EventHandler:
 
 class BoardGUI:
 
-    RESOLUTION = 800
+    RESOLUTION = 900
     OFFSET = roundint(0.04 * RESOLUTION)
-    PIECE_SHIFT = (0.0056 * np.array([-1, -1]) * RESOLUTION).round().astype(int)
+    PIECE_SHIFT = (0 * np.array([1, 1]) * RESOLUTION).round().astype(int)
     SHADOW_ALPHA = 0.5
-    CIRCLE_COLOR = (100, 100, 100)
-    CIRCLE_COLOR_CAPTURE = (255, 0, 0)
-    CIRCLE_RADIUS = roundint(RESOLUTION / 64)
+    CIRCLE_COLOR = CIRCLE_COLOR_CAPTURE = (0, 0, 0)
+    CIRCLE_COLOR_ALPHA = 50
+    CIRCLE_RADIUS = roundint((RESOLUTION - 2 * OFFSET) / 64)
+    CIRCLE_RADIUS_CAPTURE = roundint(4 * (RESOLUTION - 2 * OFFSET) / 64)
+    CIRCLE_THICKNESS_CAPTURE = roundint(0.15 * CIRCLE_RADIUS_CAPTURE)
     ORIENTATION = chess.WHITE
+    HIGHLIGHT_SQUARES_COLOR_DARK = "#ff0000"
+    HIGHLIGHT_SQUARES_COLOR_LIGHT = "#ee0000"
 
     def __init__(self) -> None:
-        self.board = chess.Board()
-        self.screen = pygame.display.set_mode((self.RESOLUTION, self.RESOLUTION))
-        self.update_empty_board()
-        self.piece_symbols = "pnbrqkPNBRQK"
-        self.pieces_blit = {piece: self.render_object(chess.Piece.from_symbol(piece), self.RESOLUTION / 8) for piece in self.piece_symbols}
         self._dragging_piece_square = None
+        self.board = chess.Board()
+        self.event_handler = EventHandler(self)
+        self.screen = pygame.display.set_mode((self.RESOLUTION, self.RESOLUTION))
+        self.piece_symbols = "pnbrqkPNBRQK"
+        self.pieces_blit = {piece: self.render_object(chess.Piece.from_symbol(piece), (self.RESOLUTION - 2 * self.OFFSET) / 8) for piece in self.piece_symbols}
         self.selected_piece = None
         self.popped_moves = []
-        self.event_handler = EventHandler(self)
+        self.arrows = []
+        self.highlight_squares_dict = {}
+        self.update_empty_board()
 
     def render_object(self, obj, resolution: int, **kwargs):
         resolution = roundint(resolution)
@@ -123,25 +152,6 @@ class BoardGUI:
         png_io.seek(0)
         surf = pygame.image.load(png_io, "png")
         return surf
-
-    def update_empty_board(self):
-        lastmove = self.board.move_stack[-1] if self.board.move_stack else None
-        check = None
-        if self.board.is_check():
-            check = self.board.king(self.board.turn)
-        self.empty_board_blit = self.render_object(chess.Board("8/8/8/8/8/8/8/8 w - - 0 1"), self.RESOLUTION, lastmove = lastmove, orientation = self.ORIENTATION, check = check)
-
-    def push(self, move):
-        self.board.push(move)
-        self.update_empty_board()
-
-    def pop(self):
-        move = self.board.pop()
-        if self.board.move_stack:
-            self.update_empty_board()
-        else:
-            self.update_empty_board()
-        return move
 
     @property
     def dragging_piece_square(self):
@@ -155,6 +165,33 @@ class BoardGUI:
             self._dragging_piece_square = None
             return
         self._dragging_piece_square = square if self.ORIENTATION else chess.square_mirror(square)
+
+    def update_empty_board(self):
+        lastmove = self.board.move_stack[-1] if self.board.move_stack else None
+        check = None
+        if self.board.is_check():
+            check = self.board.king(self.board.turn)
+        self.empty_board_blit = self.render_object(
+            chess.Board("8/8/8/8/8/8/8/8 w - - 0 1"),
+            self.RESOLUTION,
+            lastmove = lastmove,
+            orientation = self.ORIENTATION,
+            check = check,
+            arrows = self.arrows,
+            fill = self.highlight_squares_dict,
+        )
+
+    def push(self, move):
+        self.board.push(move)
+        self.update_empty_board()
+
+    def pop(self):
+        move = self.board.pop()
+        if self.board.move_stack:
+            self.update_empty_board()
+        else:
+            self.update_empty_board()
+        return move
 
     def get_square_from_mouse_pos(self, mouse_pos = None):
         if mouse_pos is None:
@@ -199,9 +236,15 @@ class BoardGUI:
                 if self.dragging_piece_square:
                     circle_coordinate = (x + (self.RESOLUTION - 2 * self.OFFSET) / 16, y + (self.RESOLUTION - 2 * self.OFFSET) / 16)
                     for move in self.board.generate_legal_moves(chess.BB_SQUARES[self.dragging_piece_square]):
-                        if square == move.to_square:
-                            color  = self.CIRCLE_COLOR_CAPTURE if self.board.is_capture(move) else self.CIRCLE_COLOR
-                            pygame.draw.circle(self.screen, color, circle_coordinate, self.CIRCLE_RADIUS)
+                        if square == move.to_square and move.promotion in [None, chess.QUEEN]:
+                            radius = self.CIRCLE_RADIUS_CAPTURE if self.board.is_capture(move) else self.CIRCLE_RADIUS
+                            color = self.CIRCLE_COLOR_CAPTURE if self.board.is_capture(move) else self.CIRCLE_COLOR
+                            thickness = self.CIRCLE_THICKNESS_CAPTURE if self.board.is_capture(move) else 0
+                            alpha = self.CIRCLE_COLOR_ALPHA
+                            circle = pygame.Surface((2*radius, 2*radius), pygame.SRCALPHA)
+                            pygame.draw.circle(circle, color, (radius, radius), radius, thickness)
+                            circle.set_alpha(alpha)
+                            self.screen.blit(circle, circle.get_rect(center = circle_coordinate))
 
         if dragging_piece_blit:
             self.screen.blit(*dragging_piece_blit)
@@ -275,38 +318,36 @@ class BoardGUI:
     def handle_events(self, event):
         if event.type in [pygame.QUIT] or (event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_q]):
             self.event_handler.exit()
-            return
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == pygame.BUTTON_LEFT:
                 self.event_handler.left_mouse_button_down()
-                return
+
+            elif event.button == pygame.BUTTON_RIGHT:
+                self.event_handler.right_mouse_button_down()
 
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == pygame.BUTTON_LEFT:
                 self.event_handler.left_mouse_button_up()
-                return
+
+            elif event.button == pygame.BUTTON_RIGHT:
+                self.event_handler.right_mouse_button_up()
 
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 self.event_handler.left_arrow_key_down()
-                return
 
             elif event.key == pygame.K_RIGHT:
                 self.event_handler.right_arrow_key_down()
-                return
 
             elif event.key == pygame.K_UP:
                 self.event_handler.up_arrow_key_down()
-                return
 
             elif event.key == pygame.K_DOWN:
                 self.event_handler.down_arrow_key_down()
-                return
 
             elif event.key == pygame.K_f:
                 self.event_handler.f_key_down()
-                return
 
     def run_gui(self):
         pygame.init()
