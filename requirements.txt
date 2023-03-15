@@ -1,0 +1,4 @@
+chess
+pygame
+numpy
+cairosvg
