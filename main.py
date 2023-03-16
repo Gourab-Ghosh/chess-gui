@@ -5,6 +5,7 @@ import chess
 import chess.svg
 import pygame
 import cairosvg
+import threading
 
 os.environ["SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR"] = "0"
 
@@ -49,7 +50,7 @@ class EventHandler:
     
     def left_mouse_button_down(self):
         self.board_gui.dragging_piece_square = self.board_gui.get_square_from_mouse_pos()
-        self.board_gui.update_empty_board()
+        self.board_gui.update_board_blit()
 
     def left_mouse_button_up(self):
         dragging_piece = None if self.board_gui.dragging_piece_square is None else self.board_gui.board.piece_at(self.board_gui.dragging_piece_square)
@@ -65,7 +66,7 @@ class EventHandler:
             if self.board_gui.board.is_legal(move):
                 self.board_gui.push(move)
                 self.board_gui.popped_moves.clear()
-            self.board_gui.dragging_piece_square = None
+        self.board_gui.dragging_piece_square = None
 
     def right_mouse_button_down(self):
         self.right_click_pressed_square = self.board_gui.get_square_from_mouse_pos()
@@ -79,44 +80,51 @@ class EventHandler:
                 square = self.right_click_pressed_square
                 self.board_gui.highlight_squares_dict[square] = self.board_gui.HIGHLIGHT_SQUARES_COLOR_DARK if (chess.square_rank(square) + chess.square_file(square)) % 2 else self.board_gui.HIGHLIGHT_SQUARES_COLOR_LIGHT
         else:
-            print("Drawing arrows implemented yet :(")
+            arrow = (self.right_click_pressed_square, right_click_released_square)
+            if arrow in self.board_gui.arrows:
+                self.board_gui.arrows.remove(arrow)
+            else:
+                self.board_gui.arrows.add(arrow)
+            print("Drawing arrows not implemented correctly yet :(")
         self.right_click_pressed_square = None
-        self.board_gui.update_empty_board()
+        self.board_gui.update_board_blit()
     
     def left_arrow_key_down(self):
         if self.board_gui.board.move_stack:
             self.board_gui.popped_moves.append(self.board_gui.pop())
+        self.board_gui.clear_arrows_and_highlights_and_update_board()
 
     def right_arrow_key_down(self):
         if self.board_gui.popped_moves:
             self.board_gui.push((self.board_gui.popped_moves.pop()))
+        self.board_gui.clear_arrows_and_highlights_and_update_board()
 
     def up_arrow_key_down(self):
         while self.board_gui.board.move_stack:
             self.board_gui.popped_moves.append(self.board_gui.board.pop())
-        self.board_gui.update_empty_board()
+        self.board_gui.clear_arrows_and_highlights_and_update_board()
 
     def down_arrow_key_down(self):
         while self.board_gui.popped_moves:
             self.board_gui.board.push((self.board_gui.popped_moves.pop()))
-        self.board_gui.update_empty_board()
+        self.board_gui.clear_arrows_and_highlights_and_update_board()
 
     def f_key_down(self):
         self.board_gui.ORIENTATION = not self.board_gui.ORIENTATION
         self.board_gui.dragging_piece_square = None
-        self.board_gui.update_empty_board()
+        self.board_gui.update_board_blit()
     
     def exit(self):
         self.board_gui.running = False
 
 class BoardGUI:
 
-    RESOLUTION = 900
+    RESOLUTION = 800
     OFFSET = roundint(0.04 * RESOLUTION)
     PIECE_SHIFT = (0 * np.array([1, 1]) * RESOLUTION).round().astype(int)
     SHADOW_ALPHA = 0.5
     CIRCLE_COLOR = CIRCLE_COLOR_CAPTURE = (0, 0, 0)
-    CIRCLE_COLOR_ALPHA = 50
+    CIRCLE_COLOR_ALPHA = 40
     CIRCLE_RADIUS = roundint((RESOLUTION - 2 * OFFSET) / 64)
     CIRCLE_RADIUS_CAPTURE = roundint(4 * (RESOLUTION - 2 * OFFSET) / 64)
     CIRCLE_THICKNESS_CAPTURE = roundint(0.15 * CIRCLE_RADIUS_CAPTURE)
@@ -133,9 +141,9 @@ class BoardGUI:
         self.pieces_blit = {piece: self.render_object(chess.Piece.from_symbol(piece), (self.RESOLUTION - 2 * self.OFFSET) / 8) for piece in self.piece_symbols}
         self.selected_piece = None
         self.popped_moves = []
-        self.arrows = []
+        self.arrows = set()
         self.highlight_squares_dict = {}
-        self.update_empty_board()
+        self.update_board_blit()
 
     def render_object(self, obj, resolution: int, **kwargs):
         resolution = roundint(resolution)
@@ -161,7 +169,12 @@ class BoardGUI:
             return
         self._dragging_piece_square = square if self.ORIENTATION else chess.square_mirror(square)
 
-    def update_empty_board(self):
+    def clear_arrows_and_highlights_and_update_board(self):
+        self.arrows.clear()
+        self.highlight_squares_dict.clear()
+        self.update_board_blit()
+
+    def update_board_blit(self):
         lastmove = self.board.move_stack[-1] if self.board.move_stack else None
         check = None
         if self.board.is_check():
@@ -169,7 +182,7 @@ class BoardGUI:
         if self.dragging_piece_square is not None:
             self.arrows.clear()
             self.highlight_squares_dict.clear()
-        self.empty_board_blit = self.render_object(
+        self.board_blit = self.render_object(
             chess.Board("8/8/8/8/8/8/8/8 w - - 0 1"),
             self.RESOLUTION,
             lastmove = lastmove,
@@ -181,14 +194,14 @@ class BoardGUI:
 
     def push(self, move):
         self.board.push(move)
-        self.update_empty_board()
+        self.update_board_blit()
 
     def pop(self):
         move = self.board.pop()
         if self.board.move_stack:
-            self.update_empty_board()
+            self.update_board_blit()
         else:
-            self.update_empty_board()
+            self.update_board_blit()
         return move
 
     def get_square_from_mouse_pos(self, mouse_pos = None):
@@ -211,14 +224,12 @@ class BoardGUI:
             return square
 
     def render_board(self):
-        self.screen.blit(self.empty_board_blit, (0, 0))
+        self.screen.blit(self.board_blit, (0, 0))
         xs = np.linspace(self.OFFSET, self.RESOLUTION - self.OFFSET, 9)[:-1]
         ys = np.linspace(self.OFFSET, self.RESOLUTION - self.OFFSET, 9)[:-1]
         dragging_piece_blit = None
-        for row, x in enumerate(xs):
-            # pygame.draw.line(self.screen, (255, 0, 0), (x, ys[0]), (x, ys[-1]))
-            for col, y in enumerate(ys):
-                # pygame.draw.line(self.screen, (255, 0, 0), (xs[0], y), (xs[-1], y))
+        for x in xs:
+            for y in ys:
                 square = self.get_square_from_mouse_pos((x, y))
                 piece = self.board.piece_at(square)
                 if piece:
@@ -350,8 +361,7 @@ class BoardGUI:
     def run_gui(self):
         pygame.init()
         pygame.font.init()
-        pygame.display.set_caption("Chess")
-        font = pygame.font.SysFont("Comic Sans MS", 30)
+        pygame.display.set_caption("Chess GUI")
         self.clock = pygame.time.Clock()
         self.running = True
         while self.running:
