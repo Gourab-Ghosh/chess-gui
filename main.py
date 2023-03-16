@@ -1,11 +1,21 @@
 import io
 import os
+import sys
 import numpy as np
 import chess
 import chess.svg
 import pygame
-import cairosvg
 import threading
+
+try:
+    import cairosvg
+except:
+    if sys.platform != "win32":
+        print("Some error occurred!")
+        sys.exit()
+    os.system("pip install pipwin")
+    os.system("pipwin install cairocffi")
+    import cairosvg
 
 os.environ["SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR"] = "0"
 
