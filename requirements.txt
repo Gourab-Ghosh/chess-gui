@@ -1,4 +1,0 @@
-chess
-pygame
-numpy
-cairosvg

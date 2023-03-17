@@ -1,20 +1,26 @@
 import io
 import os
 import sys
-import numpy as np
-import chess
-import chess.svg
-import pygame
 import threading
 
 try:
+    import numpy as np
+    import chess
+    import chess.svg
+    import pygame
     import cairosvg
 except:
-    if sys.platform != "win32":
-        print("Some error occurred!")
-        sys.exit()
-    os.system("pip install pipwin")
-    os.system("pipwin install cairocffi")
+    req_packages = ["numpy", "chess", "pygame"]
+    if sys.platform == "win32":
+        os.system("python -m pip install -U {} pipwin".format(" ".join(req_packages)))
+        os.system("python -m pipwin install cairocffi")
+        os.system("python -m pip install cairosvg")
+    else:
+        os.system("python3 -m pip install -U {} cairosvg".format(" ".join(req_packages)))
+    import numpy as np
+    import chess
+    import chess.svg
+    import pygame
     import cairosvg
 
 os.environ["SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR"] = "0"
