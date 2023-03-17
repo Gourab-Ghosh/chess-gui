@@ -10,14 +10,21 @@ try:
     import pygame
     import cairosvg
 except:
-    req_packages = ["numpy", "chess", "pygame", "cairosvg"]
-    os.system("python -m ensurepip --upgrade")
-    os.system("python -m pip install -U pip setuptools wheel")
-    if sys.platform == "win32":
-        os.system("python -m pip install -U {} pipwin".format(" ".join(req_packages)))
-        os.system("python -m pipwin install cairocffi")
-    else:
-        os.system("python3 -m pip install -U {}".format(" ".join(req_packages)))
+    if "--auto-install" in sys.argv:
+        python_executable = sys.executable
+        req_txt_file = os.path.dirname(__file__) + os.sep + "requirements.txt"
+        if not os.path.isfile(req_txt_file):
+            print("Could not find requirements.txt file")
+            sys.exit(1)
+        with open(req_txt_file, "r") as rf:
+            req_packages = [package.strip() for package in rf.read().strip().splitlines() if package.strip() and not package.strip().startswith("#")]
+        os.system("{} -m ensurepip --upgrade".format(python_executable))
+        os.system("{} -m pip install -U pip setuptools wheel".format(python_executable))
+        if sys.platform == "win32":
+            os.system("{} -m pip install -U {} pipwin".format(python_executable, " ".join(req_packages)))
+            os.system("{} -m pipwin install cairocffi".format(python_executable))
+        else:
+            os.system("{} -m pip install -U {}".format(python_executable, " ".join(req_packages)))
     import numpy as np
     import chess
     import chess.svg
@@ -73,16 +80,17 @@ class EventHandler:
         dragging_piece = None if self.board_gui.dragging_piece_square is None else self.board_gui.board.piece_at(self.board_gui.dragging_piece_square)
         if dragging_piece is not None:
             square = self.board_gui.get_square_from_mouse_pos()
-            promotion_piece_type = None
-            if (chess.square_rank(square), dragging_piece.symbol()) in [(0, "p"), (7, "P")]:
-                if self.board_gui.board.is_legal(chess.Move(self.board_gui.dragging_piece_square, square, promotion = chess.QUEEN)):
-                    self.board_gui.board.push(chess.Move(self.board_gui.dragging_piece_square, square))
-                    promotion_piece_type = self.board_gui.get_promotion_piece_type()
-                    self.board_gui.board.pop()
-            move = chess.Move(self.board_gui.dragging_piece_square, square, promotion = promotion_piece_type)
-            if self.board_gui.board.is_legal(move):
-                self.board_gui.push(move)
-                self.board_gui.popped_moves.clear()
+            if square is not None:
+                promotion_piece_type = None
+                if (chess.square_rank(square), dragging_piece.symbol()) in [(0, "p"), (7, "P")]:
+                    if self.board_gui.board.is_legal(chess.Move(self.board_gui.dragging_piece_square, square, promotion = chess.QUEEN)):
+                        self.board_gui.board.push(chess.Move(self.board_gui.dragging_piece_square, square))
+                        promotion_piece_type = self.board_gui.get_promotion_piece_type()
+                        self.board_gui.board.pop()
+                move = chess.Move(self.board_gui.dragging_piece_square, square, promotion = promotion_piece_type)
+                if self.board_gui.board.is_legal(move):
+                    self.board_gui.push(move)
+                    self.board_gui.popped_moves.clear()
         self.board_gui.dragging_piece_square = None
 
     def right_mouse_button_down(self):
@@ -90,6 +98,8 @@ class EventHandler:
 
     def right_mouse_button_up(self):
         right_click_released_square = self.board_gui.get_square_from_mouse_pos()
+        if right_click_released_square is None:
+            return
         if self.right_click_pressed_square == right_click_released_square:
             if self.right_click_pressed_square in self.board_gui.highlight_squares_dict.keys():
                 self.board_gui.highlight_squares_dict.pop(self.right_click_pressed_square)
@@ -136,20 +146,22 @@ class EventHandler:
 
 class BoardGUI:
 
-    RESOLUTION = 800
-    OFFSET = roundint(0.04 * RESOLUTION)
-    PIECE_SHIFT = (0 * np.array([1, 1]) * RESOLUTION).round().astype(int)
-    SHADOW_ALPHA_PERCENT = 0.5
-    CIRCLE_COLOR = CIRCLE_COLOR_CAPTURE = (0, 0, 0)
-    CIRCLE_COLOR_ALPHA = 40
-    CIRCLE_RADIUS = roundint((RESOLUTION - 2 * OFFSET) / 64)
-    CIRCLE_RADIUS_CAPTURE = roundint(4 * (RESOLUTION - 2 * OFFSET) / 64)
-    CIRCLE_THICKNESS_CAPTURE = roundint(0.15 * CIRCLE_RADIUS_CAPTURE)
-    ORIENTATION = chess.WHITE
-    HIGHLIGHT_SQUARES_COLOR_DARK = "#ff0000"
-    HIGHLIGHT_SQUARES_COLOR_LIGHT = "#ee0000"
-
     def __init__(self) -> None:
+        pygame.init()
+
+        self.RESOLUTION = roundint(0.8 * min(pygame.display.Info().current_w, pygame.display.Info().current_h))
+        self.OFFSET = roundint(0.04 * self.RESOLUTION)
+        self.PIECE_SHIFT = (0 * np.array([1, 1]) * self.RESOLUTION).round().astype(int)
+        self.SHADOW_ALPHA_PERCENT = 0.5
+        self.CIRCLE_COLOR = self.CIRCLE_COLOR_CAPTURE = (0, 0, 0)
+        self.CIRCLE_COLOR_ALPHA = 40
+        self.CIRCLE_RADIUS = roundint((self.RESOLUTION - 2 * self.OFFSET) / 64)
+        self.CIRCLE_RADIUS_CAPTURE = roundint(4 * (self.RESOLUTION - 2 * self.OFFSET) / 64)
+        self.CIRCLE_THICKNESS_CAPTURE = roundint(0.15 * self.CIRCLE_RADIUS_CAPTURE)
+        self.ORIENTATION = chess.WHITE
+        self.HIGHLIGHT_SQUARES_COLOR_DARK = "#ff0000"
+        self.HIGHLIGHT_SQUARES_COLOR_LIGHT = "#ee0000"
+
         self._dragging_piece_square = None
         self.board = chess.Board()
         self.event_handler = EventHandler(self)
@@ -159,6 +171,8 @@ class BoardGUI:
         self.popped_moves = []
         self.arrows = set()
         self.highlight_squares_dict = {}
+        self.white_engine = None
+        self.black_engine = None
         self.generate_blits()
 
     def generate_blits(self):
@@ -380,7 +394,6 @@ class BoardGUI:
                 self.event_handler.f_key_down()
 
     def run_gui(self):
-        pygame.init()
         pygame.font.init()
         pygame.display.set_caption("Chess GUI")
         self.clock = pygame.time.Clock()
@@ -391,6 +404,15 @@ class BoardGUI:
             self.render_board()
             pygame.display.update()
         pygame.quit()
+    
+    def add_white_engine(self, engine):
+        self.white_engine = engine
+    
+    def add_black_engine(self, engine):
+        self.black_engine = engine
+    
+    def add_engine(self, engine):
+        self.white_engine = self.black_engine = engine
 
 board_gui = BoardGUI()
 
