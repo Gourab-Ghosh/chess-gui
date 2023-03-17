@@ -11,6 +11,7 @@ try:
     import cairosvg
 except:
     req_packages = ["numpy", "chess", "pygame"]
+    os.system("python -m ensurepip --upgrade")
     if sys.platform == "win32":
         os.system("python -m pip install -U {} pipwin".format(" ".join(req_packages)))
         os.system("python -m pipwin install cairocffi")
