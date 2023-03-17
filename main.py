@@ -10,14 +10,14 @@ try:
     import pygame
     import cairosvg
 except:
-    req_packages = ["numpy", "chess", "pygame"]
+    req_packages = ["numpy", "chess", "pygame", "cairosvg"]
     os.system("python -m ensurepip --upgrade")
+    os.system("python -m pip install -U pip setuptools wheel")
     if sys.platform == "win32":
         os.system("python -m pip install -U {} pipwin".format(" ".join(req_packages)))
         os.system("python -m pipwin install cairocffi")
-        os.system("python -m pip install cairosvg")
     else:
-        os.system("python3 -m pip install -U {} cairosvg".format(" ".join(req_packages)))
+        os.system("python3 -m pip install -U {}".format(" ".join(req_packages)))
     import numpy as np
     import chess
     import chess.svg
