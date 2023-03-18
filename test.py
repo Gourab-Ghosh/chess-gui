@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 from chess_gui import ChessGUI
 
@@ -33,8 +34,6 @@ class Timecat:
         self._has_quit_command_been_sent = False
         self._put("set color false")
         self.disable_info = True
-        for _ in range(4):
-            self._read_line()
 
     def _read_line(self) -> str:
         if not self._stockfish.stdout:
