@@ -77,10 +77,15 @@ class Timecat:
         self.quit()
         del self
 
-timecat = Timecat()
+d = 13
+timecat = Timecat(depth = d)
+timecat.disable_info = False
+stockfish = Stockfish(depth = 18)
+stockfish.set_elo_rating(3700)
 
 board_gui = ChessGUI()
-board_gui.add_black_engine(timecat)
+board_gui.add_white_engine(timecat)
+board_gui.add_black_engine(stockfish)
 
 # board_gui.run()
 board_gui.play()

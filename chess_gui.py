@@ -202,6 +202,9 @@ class EventHandler:
             self.chess_gui.clear_arrows_and_highlights_and_update_board()
             self.chess_gui.update_board_blit()
 
+    def p_key_down(self):
+        print(chess.Board().variation_san(self.chess_gui.board.move_stack))
+
     def exit(self):
         self.chess_gui.running = False
 
@@ -487,6 +490,9 @@ class ChessGUI:
                 if self._last_thread is not None:
                     self._last_thread.start()
 
+            elif event.key == pygame.K_p:
+                self.event_handler.p_key_down()
+
     def add_white_engine(self, engine):
         self.white_engine = engine
     
@@ -509,10 +515,10 @@ class ChessGUI:
         self.running = True
         self.in_play_mode = False
         while self.running:
-            for event in pygame.event.get():
-                self.handle_events(event)
             self.render_board()
             pygame.display.update()
+            for event in pygame.event.get():
+                self.handle_events(event)
         pygame.quit()
 
     def play(self):
@@ -523,17 +529,18 @@ class ChessGUI:
         self.running = True
         self.in_play_mode = True
         while self.running:
+            self.render_board()
+            pygame.display.update()
             engine = self.white_engine if self.board.turn else self.black_engine
-            if not self.engine_is_thinking() and engine:
+            if not self.engine_is_thinking() and engine and not (self.board.is_game_over() or self.board.is_repetition(3) or self.board._is_halfmoves(100)):
                 self.handle_events(pygame.event.Event(pygame.KEYDOWN, key = pygame.K_SPACE))
+                self.handle_events(pygame.event.Event(pygame.KEYDOWN, key = pygame.K_p))
             else:
                 for event in pygame.event.get():
                     self.handle_events(event)
-            self.render_board()
-            pygame.display.update()
         for engine in {self.white_engine, self.black_engine}:
             if engine is not None:
-                engine.quit()
+                del engine
         pygame.quit()
 
 if __name__ == "__main__":
