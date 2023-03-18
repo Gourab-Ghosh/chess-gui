@@ -24,7 +24,7 @@ class Timecat:
     def __init__(self, path: str = "timecat", depth: int = 10):
         self._path = os.path.abspath(path)
         self.depth = depth
-        self._stockfish = subprocess.Popen(
+        self._timecat = subprocess.Popen(
             self._path,
             universal_newlines=True,
             stdin=subprocess.PIPE,
@@ -36,18 +36,18 @@ class Timecat:
         self.disable_info = True
 
     def _read_line(self) -> str:
-        if not self._stockfish.stdout:
+        if not self._timecat.stdout:
             raise BrokenPipeError()
-        if self._stockfish.poll() is not None:
+        if self._timecat.poll() is not None:
             raise Exception("The Timecat process has crashed")
-        return self._stockfish.stdout.readline().strip()
+        return self._timecat.stdout.readline().strip()
     
     def _put(self, command: str) -> None:
-        if not self._stockfish.stdin:
+        if not self._timecat.stdin:
             raise BrokenPipeError()
-        if self._stockfish.poll() is None and not self._has_quit_command_been_sent:
-            self._stockfish.stdin.write(f"{command}\n")
-            self._stockfish.stdin.flush()
+        if self._timecat.poll() is None and not self._has_quit_command_been_sent:
+            self._timecat.stdin.write(f"{command}\n")
+            self._timecat.stdin.flush()
             if command == "quit":
                 self._has_quit_command_been_sent = True
 

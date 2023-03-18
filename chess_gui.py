@@ -10,6 +10,7 @@ try:
     import chess.svg
     import pygame
     import cairosvg
+    from rich.traceback import install
 except:
     if "--auto-install" in sys.argv:
         python_executable = "\"" + sys.executable + "\""
@@ -31,6 +32,9 @@ except:
     import chess.svg
     import pygame
     import cairosvg
+    from rich.traceback import install
+
+install()
 
 os.environ["SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR"] = "0"
 
