@@ -12,7 +12,7 @@ try:
     import cairosvg
 except:
     if "--auto-install" in sys.argv:
-        python_executable = sys.executable
+        python_executable = "\"" + sys.executable + "\""
         req_txt_file = os.path.dirname(__file__) + os.sep + "requirements.txt"
         if not os.path.isfile(req_txt_file):
             print("Could not find requirements.txt file")
@@ -527,6 +527,9 @@ class ChessGUI:
                     self.handle_events(event)
             self.render_board()
             pygame.display.update()
+        for engine in {self.white_engine, self.black_engine}:
+            if engine is not None:
+                engine.quit()
         pygame.quit()
 
 if __name__ == "__main__":

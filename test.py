@@ -70,6 +70,13 @@ class Timecat:
                 break
         return best_move
 
+    def quit(self):
+        self._put("quit")
+
+    def __del__(self):
+        self.quit()
+        del self
+
 timecat = Timecat()
 
 board_gui = ChessGUI()
