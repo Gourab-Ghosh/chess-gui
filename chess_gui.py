@@ -96,101 +96,112 @@ render_object.cache = {}
 
 class EventHandler:
 
-    def __init__(self, board_gui):
-        self.board_gui = board_gui
+    def __init__(self, chess_gui):
+        self.chess_gui = chess_gui
         self.right_click_pressed_square = None
     
     def left_mouse_button_down(self):
-        self.board_gui.dragging_piece_square = self.board_gui.get_square_from_mouse_pos()
-        self.board_gui.update_board_blit()
+        self.chess_gui.dragging_piece_square = self.chess_gui.get_square_from_mouse_pos()
+        self.chess_gui.update_board_blit()
 
     def left_mouse_button_up(self):
-        dragging_piece = None if self.board_gui.dragging_piece_square is None else self.board_gui.board.piece_at(self.board_gui.dragging_piece_square)
+        dragging_piece = None if self.chess_gui.dragging_piece_square is None else self.chess_gui.board.piece_at(self.chess_gui.dragging_piece_square)
         if dragging_piece is not None:
-            square = self.board_gui.get_square_from_mouse_pos()
+            square = self.chess_gui.get_square_from_mouse_pos()
             if square is not None:
                 promotion_piece_type = None
                 if (chess.square_rank(square), dragging_piece.symbol()) in [(0, "p"), (7, "P")]:
-                    if self.board_gui.board.is_legal(chess.Move(self.board_gui.dragging_piece_square, square, promotion = chess.QUEEN)):
-                        self.board_gui.board.push(chess.Move(self.board_gui.dragging_piece_square, square))
-                        promotion_piece_type = self.board_gui.get_promotion_piece_type()
-                        self.board_gui.board.pop()
-                move = chess.Move(self.board_gui.dragging_piece_square, square, promotion = promotion_piece_type)
-                if self.board_gui.board.is_legal(move):
-                    self.board_gui.push(move)
-                    self.board_gui.popped_moves.clear()
-        self.board_gui.dragging_piece_square = None
+                    if self.chess_gui.board.is_legal(chess.Move(self.chess_gui.dragging_piece_square, square, promotion = chess.QUEEN)):
+                        self.chess_gui.board.push(chess.Move(self.chess_gui.dragging_piece_square, square))
+                        promotion_piece_type = self.chess_gui.get_promotion_piece_type()
+                        self.chess_gui.board.pop()
+                move = chess.Move(self.chess_gui.dragging_piece_square, square, promotion = promotion_piece_type)
+                if self.chess_gui.board.is_legal(move):
+                    self.chess_gui.push(move)
+                    self.chess_gui.popped_moves.clear()
+        self.chess_gui.dragging_piece_square = None
 
     def right_mouse_button_down(self):
-        self.right_click_pressed_square = self.board_gui.get_square_from_mouse_pos()
+        self.right_click_pressed_square = self.chess_gui.get_square_from_mouse_pos()
 
     def right_mouse_button_up(self):
-        right_click_released_square = self.board_gui.get_square_from_mouse_pos()
+        right_click_released_square = self.chess_gui.get_square_from_mouse_pos()
         if right_click_released_square is None:
             return
         if self.right_click_pressed_square == right_click_released_square:
-            if self.right_click_pressed_square in self.board_gui.highlight_squares_dict.keys():
-                self.board_gui.highlight_squares_dict.pop(self.right_click_pressed_square)
+            if self.right_click_pressed_square in self.chess_gui.highlight_squares_dict.keys():
+                self.chess_gui.highlight_squares_dict.pop(self.right_click_pressed_square)
             else:
                 square = self.right_click_pressed_square
-                self.board_gui.highlight_squares_dict[square] = self.board_gui.HIGHLIGHT_SQUARES_COLOR_DARK if (chess.square_rank(square) + chess.square_file(square)) % 2 else self.board_gui.HIGHLIGHT_SQUARES_COLOR_LIGHT
+                self.chess_gui.highlight_squares_dict[square] = self.chess_gui.HIGHLIGHT_SQUARES_COLOR_DARK if (chess.square_rank(square) + chess.square_file(square)) % 2 else self.chess_gui.HIGHLIGHT_SQUARES_COLOR_LIGHT
         else:
             arrow = (self.right_click_pressed_square, right_click_released_square)
-            if arrow in self.board_gui.arrows:
-                self.board_gui.arrows.remove(arrow)
+            if arrow in self.chess_gui.arrows:
+                self.chess_gui.arrows.remove(arrow)
             else:
-                self.board_gui.arrows.add(arrow)
+                self.chess_gui.arrows.add(arrow)
             print("Drawing arrows not implemented correctly yet :(")
         self.right_click_pressed_square = None
-        self.board_gui.update_board_blit()
+        self.chess_gui.update_board_blit()
     
     def left_arrow_key_down(self):
-        if self.board_gui.engine_thinking():
+        if self.chess_gui.engine_is_thinking():
             return
-        if self.board_gui.board.move_stack:
-            self.board_gui.pop()
-        self.board_gui.clear_arrows_and_highlights_and_update_board()
+        num_times = 2 if self.chess_gui.in_play_mode else 1
+        for _ in range(num_times):
+            if self.chess_gui.board.move_stack:
+                self.chess_gui.pop()
+        self.chess_gui.clear_arrows_and_highlights_and_update_board()
 
     def right_arrow_key_down(self):
-        if self.board_gui.engine_thinking():
+        if self.chess_gui.engine_is_thinking():
             return
-        if self.board_gui.popped_moves:
-            self.board_gui.push((self.board_gui.popped_moves.pop()))
-        self.board_gui.clear_arrows_and_highlights_and_update_board()
+        num_times = 2 if self.chess_gui.in_play_mode else 1
+        for _ in range(num_times):
+            if self.chess_gui.popped_moves:
+                self.chess_gui.push((self.chess_gui.popped_moves.pop()))
+        self.chess_gui.clear_arrows_and_highlights_and_update_board()
 
     def up_arrow_key_down(self):
-        if self.board_gui.engine_thinking():
+        if self.chess_gui.engine_is_thinking():
             return
-        while self.board_gui.board.move_stack:
-            self.board_gui.board.pop()
-        self.board_gui.clear_arrows_and_highlights_and_update_board()
+        while self.chess_gui.board.move_stack:
+            self.chess_gui.pop()
+        self.chess_gui.clear_arrows_and_highlights_and_update_board()
 
     def down_arrow_key_down(self):
-        if self.board_gui.engine_thinking():
+        if self.chess_gui.engine_is_thinking():
             return
-        while self.board_gui.popped_moves:
-            self.board_gui.board.push((self.board_gui.popped_moves.pop()))
-        self.board_gui.clear_arrows_and_highlights_and_update_board()
+        while self.chess_gui.popped_moves:
+            self.chess_gui.push((self.chess_gui.popped_moves.pop()))
+        self.chess_gui.clear_arrows_and_highlights_and_update_board()
 
     def f_key_down(self):
-        self.board_gui.ORIENTATION = not self.board_gui.ORIENTATION
-        # self.board_gui.update_board_blit()
+        self.chess_gui.ORIENTATION = not self.chess_gui.ORIENTATION
+        self.chess_gui.update_board_blit()
 
     def space_key_down(self):
-        engine = self.board_gui.white_engine if self.board_gui.board.turn else self.board_gui.black_engine
+        engine = self.chess_gui.white_engine if self.chess_gui.board.turn else self.chess_gui.black_engine
         if engine is None:
             return
-        move = chess.Move.from_uci(engine.get_best_move())
+        move_text = engine.get_best_move()
+        if isinstance(move_text, chess.Move):
+            move = move_text
+        else:
+            try:
+                move = chess.Move.from_uci(move_text)
+            except chess.InvalidMoveError:
+                move = self.chess_gui.board.parse_san(move_text)
         if move is not None:
-            self.board_gui.push(move, force_push = True)
-            self.board_gui.popped_moves.clear()
-            self.board_gui.clear_arrows_and_highlights_and_update_board()
-            self.board_gui.update_board_blit()
+            self.chess_gui.push(move, force_push = True)
+            self.chess_gui.popped_moves.clear()
+            self.chess_gui.clear_arrows_and_highlights_and_update_board()
+            self.chess_gui.update_board_blit()
 
     def exit(self):
-        self.board_gui.running = False
+        self.chess_gui.running = False
 
-class BoardGUI:
+class ChessGUI:
 
     def __init__(self) -> None:
         pygame.init()
@@ -286,8 +297,9 @@ class BoardGUI:
         )
 
     def push(self, move: chess.Move, force_push = False):
-        if self.engine_thinking() and not force_push:
+        if self.engine_is_thinking() and not force_push:
             return
+        move = self.board.parse_san(self.board.san(move))
         self.board.push(move)
         self.update_board_blit()
         for engine in {self.white_engine, self.black_engine}:
@@ -295,9 +307,9 @@ class BoardGUI:
                 engine.make_move(move.uci())
 
     def pop(self):
-        if self.engine_thinking():
+        if self.engine_is_thinking():
             return
-        move = self.board.pop()
+        move = self.board.parse_san(self.board.san(self.board.pop()))
         self.popped_moves.append(move)
         self.update_board_blit()
         for engine in {self.white_engine, self.black_engine}:
@@ -346,14 +358,14 @@ class BoardGUI:
                     image_rect = (x + self.PIECE_SHIFT[0], y + self.PIECE_SHIFT[1])
                     self.screen.blit(image, image_rect)
 
-                if self.dragging_piece_square and not self.engine_thinking():
+                if self.dragging_piece_square and not self.engine_is_thinking():
                     circle_coordinate = (x + (self.RESOLUTION - 2 * self.OFFSET) / 16, y + (self.RESOLUTION - 2 * self.OFFSET) / 16)
                     for move in self.board.generate_legal_moves(chess.BB_SQUARES[self.dragging_piece_square]):
                         if square == move.to_square and move.promotion in [None, chess.QUEEN]:
                             circle = self.circle_capture if self.board.is_capture(move) else self.circle
                             self.screen.blit(circle, circle.get_rect(center = circle_coordinate))
 
-        if self.dragging_piece_square and self.engine_thinking():
+        if self.dragging_piece_square and self.engine_is_thinking():
 
             # Make shadow
             self.screen.blit(self.shadow, (0, 0))
@@ -450,13 +462,9 @@ class BoardGUI:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
                 self.event_handler.left_arrow_key_down()
-                if self.in_play_mode:
-                    self.event_handler.left_arrow_key_down()
 
             elif event.key == pygame.K_RIGHT:
                 self.event_handler.right_arrow_key_down()
-                if self.in_play_mode:
-                    self.event_handler.right_arrow_key_down()
 
             elif event.key == pygame.K_UP:
                 self.event_handler.up_arrow_key_down()
@@ -468,7 +476,7 @@ class BoardGUI:
                 self.event_handler.f_key_down()
 
             elif event.key == pygame.K_SPACE:
-                if self.engine_thinking():
+                if self.engine_is_thinking():
                     return
                 self._last_thread = threading.Thread(target = self.event_handler.space_key_down)
                 self._last_thread.start()
@@ -482,7 +490,7 @@ class BoardGUI:
     def add_engine(self, engine):
         self.white_engine = self.black_engine = engine
 
-    def engine_thinking(self):
+    def engine_is_thinking(self):
         if self._last_thread is None:
             return False
         return self._last_thread.is_alive()
@@ -510,7 +518,7 @@ class BoardGUI:
         self.in_play_mode = True
         while self.running:
             engine = self.white_engine if self.board.turn else self.black_engine
-            if not self.engine_thinking() and engine:
+            if not self.engine_is_thinking() and engine:
                 self.handle_events(pygame.event.Event(pygame.KEYDOWN, key = pygame.K_SPACE))
             else:
                 for event in pygame.event.get():
@@ -518,3 +526,7 @@ class BoardGUI:
             self.render_board()
             pygame.display.update()
         pygame.quit()
+
+if __name__ == "__main__":
+    gui = ChessGUI()
+    gui.run()
