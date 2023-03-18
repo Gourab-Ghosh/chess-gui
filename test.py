@@ -64,7 +64,7 @@ class Timecat:
         self._put("go depth {}".format(self.depth))
         while True:
             line = self._read_line()
-            if not (self.disable_info and line.startswith("info")):
+            if not (self.disable_info and (line.lower().startswith("info") or line.lower().startswith("pv"))):
                 print(line)
             if line.startswith("Best Move"):
                 best_move = line.split()[-1]

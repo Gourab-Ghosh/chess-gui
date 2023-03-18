@@ -478,8 +478,10 @@ class ChessGUI:
             elif event.key == pygame.K_SPACE:
                 if self.engine_is_thinking():
                     return
-                self._last_thread = threading.Thread(target = self.event_handler.space_key_down)
-                self._last_thread.start()
+                # self._last_thread = threading.Thread(target = self.event_handler.space_key_down)
+                self.event_handler.space_key_down()
+                if self._last_thread is not None:
+                    self._last_thread.start()
 
     def add_white_engine(self, engine):
         self.white_engine = engine
