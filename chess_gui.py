@@ -203,7 +203,10 @@ class EventHandler:
             self.chess_gui.update_board_blit()
 
     def p_key_down(self):
-        print(chess.Board().variation_san(self.chess_gui.board.move_stack))
+        board_copy = self.chess_gui.board.copy()
+        while board_copy.move_stack:
+            board_copy.pop()
+        print(board_copy.variation_san(self.chess_gui.board.move_stack))
 
     def exit(self):
         self.chess_gui.running = False
@@ -326,6 +329,13 @@ class ChessGUI:
                 else:
                     engine.undo_move()
         return move
+
+    def set_fen(self, fen):
+        self.board.set_fen(fen)
+        for engine in {self.white_engine, self.black_engine}:
+            if engine is not None:
+                engine.set_fen(fen)
+        self.update_board_blit()
 
     def get_square_from_mouse_pos(self, mouse_pos = None):
         if mouse_pos is None:
