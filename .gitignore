@@ -1,5 +1,5 @@
 __pycache__
-timecat
-timecat.exe
-stockfish
-stockfish.exe
+timecat*
+stockfish*
+dumbcat*
+output/
